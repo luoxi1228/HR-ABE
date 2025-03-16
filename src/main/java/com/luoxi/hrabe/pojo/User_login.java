@@ -18,11 +18,11 @@ public class User_login {
     public User_login() {
     }
 
-    public String getuserId() {
+    public String getUserId() {
         return userId;
     }
 
-    public void setuserId(String userId) {
+    public void setUserId(String userId) {
         this.userId = userId;
     }
 
@@ -42,11 +42,11 @@ public class User_login {
         this.password = password;
     }
 
-    public String getattributes() {
+    public String getAttributes() {
         return attributes;
     }
 
-    public void setattributes(String attributes) {
+    public void setAttributes(String attributes) {
         this.attributes = attributes;
     }
 

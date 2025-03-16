@@ -17,11 +17,21 @@ public class User_loginController {
 
     @PostMapping("/register")
     public Result register(@RequestBody User_login user) {
-        String userId = user.getuserId();
+        String userId = user.getUserId();
         String userName = user.getUserName();
         String password = user.getPassword();
-        String attributes = user.getattributes();
+        String attributes = user.getAttributes();
         String userPic = user.getUserPic();
+
+        // 用户ID格式校验 (必须以 H 开头，并跟随 6 位数字)
+        if (userId == null || !userId.matches("^H\\d{6}$")) {
+            return Result.error("用户ID格式错误，必须以'H'开头并跟随6位数字，例如: H123456");
+        }
+
+        // 密码长度校验 (必须大于等于 6 位)
+        if (password == null || password.length() < 6) {
+            return Result.error("密码长度必须至少6位");
+        }
 
         System.out.println("userId length: " + userId.length() + ", value: " + userId);
 
@@ -33,6 +43,5 @@ public class User_loginController {
             return Result.error("用户ID已被占用");
         }
     }
-
-
 }
+

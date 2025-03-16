@@ -1,0 +1,50 @@
+CREATE TABLE user_login (
+                       user_id VARCHAR(50) PRIMARY KEY,  -- 用户 ID，作为主键
+                       user_name VARCHAR(100) ,  -- 用户名
+                       password VARCHAR(255) ,   -- 密码（通常要加密存储）
+                       attributes VARCHAR(255),    -- 用户属性（可能较长，适合 TEXT 类型）
+                       user_pic varchar(255)           -- 头像地址
+
+);
+drop table user_login;
+CREATE TABLE user_enc (
+                      user_id VARCHAR(50) PRIMARY KEY,  -- 用户 ID，作为主键
+                      TK1 TEXT NOT NULL,                -- 存储较长字符串（最大 65,535 字节）
+                      TK2 TEXT NOT NULL,                -- 存储较长字符串
+                      HK TEXT NOT NULL,                 -- 存储较长字符串
+                      DK TEXT NOT NULL                  -- 存储较长字符串
+);
+
+CREATE TABLE ul_list (
+                         user_id VARCHAR(50) PRIMARY KEY,  -- 用户 ID，作为主键
+                         attributes VARCHAR(255),          -- `attributes` 字段（假设内容较长，使用 `TEXT` 类型）
+                         TK1 TEXT NOT NULL,                 -- `TK1` 字段（使用 `TEXT` 类型，存储较长字符串）
+                         TK2 TEXT NOT NULL,                 -- `TK2` 字段
+                         HK TEXT NOT NULL                   -- `HK` 字段
+);
+
+CREATE TABLE st_list (
+                        index1 VARCHAR(50) PRIMARY KEY,  -- 索引，作为主键
+                        sign TEXT NOT NULL
+);
+
+CREATE TABLE pulic_param (
+                         index1 VARCHAR(50) PRIMARY KEY,  -- 索引，作为主键
+                         sign TEXT NOT NULL
+);
+
+CREATE TABLE pulic_param (
+                             I INT AUTO_INCREMENT PRIMARY KEY,  -- `I` 字段为主键并设置为自增
+                             MPK TEXT NOT NULL,         -- `MPK` 字段，假设其为字符串，使用 `VARCHAR` 类型
+                             MSK TEXT NOT NULL          -- `MSK` 字段，假设其为字符串，使用 `VARCHAR` 类型
+);
+
+CREATE TABLE message (
+                         user_id VARCHAR(50) PRIMARY KEY,  -- `userID` 字段作为主键
+                         encKey VARCHAR(255) NOT NULL,        -- `encKey` 字段，假设其为字符串，使用 `VARCHAR` 类型
+                         file_name VARCHAR(255) NOT NULL,  -- `fileName` 字段，假设其为字符串，使用 `VARCHAR` 类型
+                         file_type VARCHAR(50) NOT NULL,   -- `fileType` 字段，假设文件类型较短，使用 `VARCHAR(50)`
+                         file_size VARCHAR(50) NOT NULL,   -- `fileSize` 字段，使用 `VARCHAR(50)` 存储文件大小
+                         file_path TEXT NOT NULL,          -- `filePath` 字段，使用 `TEXT` 类型来存储较长路径
+                         time DATETIME NOT NULL            -- `time` 字段，存储文件上传时间，使用 `DATETIME` 类型
+);
