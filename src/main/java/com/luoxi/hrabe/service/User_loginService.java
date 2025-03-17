@@ -7,6 +7,6 @@ public interface User_loginService {
     User_login findById(String userId);
 
     //注册
-    void register(String userId,String userName, String password,String attributes,String userPic);
+    void register(String userId,String userName, String password,String attributes,String userPic) throws Exception;
 
 }
