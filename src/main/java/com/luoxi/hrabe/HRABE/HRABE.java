@@ -14,7 +14,7 @@ import it.unisa.dia.gas.jpbc.Pairing;
 import java.util.*;
 
 public class HRABE {
-    public SetupResult_h Setup_h(Pairing pairing) throws Exception {
+    public static SetupResult_h Setup_h(Pairing pairing) throws Exception {
 
         ABE2OD abe2OD = new ABE2OD();
 
@@ -36,12 +36,12 @@ public class HRABE {
         return new SetupResult_h(mpk_h, msk_h, st, ulList);
     }
 
-    public Ciphertext Enc_h(MPK_h mpk_h, String m, LSSS lsss, Pairing pairing) {
+    public static Ciphertext Enc_h(MPK_h mpk_h, String m, LSSS lsss, Pairing pairing) {
         ABE2OD abe2OD = new ABE2OD();
         return abe2OD.Enc(m, lsss, mpk_h.getPk(), pairing);
     }
 
-    public JoinResult Join(MPK_h mpk_h, MSK_h msk_h, List<UL> ul_list, String ID, String A, Pairing pairing) {
+    public static JoinResult Join(MPK_h mpk_h, MSK_h msk_h, List<UL> ul_list, String ID, String A, Pairing pairing) {
         ABE2OD abe2OD = new ABE2OD();
 
         KeyTuple keyTuple = abe2OD.KeyGen(A, msk_h.getMsk(), mpk_h.getPk(), pairing);
@@ -55,12 +55,12 @@ public class HRABE {
         return new JoinResult(ul_list, tk1, tk2, hk, dk);
     }
 
-    public List<UL> Rev(List<UL> ul_list, String ID) {
+    public static List<UL> Rev(List<UL> ul_list, String ID) {
         ul_list.removeIf(ul -> ul.getID().equals(ID));
         return ul_list;
     }
 
-    public ST Update(MSK_h msk_h, List<UL> ul_list, String index, Pairing pairing) throws Exception {
+    public static ST Update(MSK_h msk_h, List<UL> ul_list, String index, Pairing pairing) throws Exception {
         String sk = msk_h.getSk(); // 获取 MSK_h 的密钥
 
         // 序列化 UL 列表和索引
@@ -78,7 +78,7 @@ public class HRABE {
     }
 
 
-    public PTC Transform1_h(TK tk1,TK tk2,ST st,String ID,Ciphertext ciphertext,MPK_h mpk_h,Pairing pairing) throws Exception {
+    public static PTC Transform1_h(TK tk1,TK tk2,ST st,String ID,Ciphertext ciphertext,MPK_h mpk_h,Pairing pairing) throws Exception {
 
         String index=st.getIndex();
         List<UL>ul_list=st.getUl();
@@ -106,7 +106,7 @@ public class HRABE {
         return null;
     }
 
-    public TC Transform2_h(PTC ptc,HK hk,Pairing pairing) throws Exception {
+    public static TC Transform2_h(PTC ptc,HK hk,Pairing pairing) throws Exception {
         //连接服务器进行transform2
         SSHClient sshClient = new SSHClient("lx", "10.242.175.231", 10021, "qymshkm#:\"ZHkcNDV6TQq");
         String url="http://localhost:5000/Transform2";
@@ -129,7 +129,7 @@ public class HRABE {
         }
     }
 
-    public String Dec_h(DK dk,TC tc,MPK_h mpk_h,Pairing pairing) throws Exception {
+    public static String Dec_h(DK dk,TC tc,MPK_h mpk_h,Pairing pairing) throws Exception {
         ABE2OD abe2OD = new ABE2OD();
         return utils.binaryToString(abe2OD.Dec(dk,tc,mpk_h.getPk(),pairing));
     }

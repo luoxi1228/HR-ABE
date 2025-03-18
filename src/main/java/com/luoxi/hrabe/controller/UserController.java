@@ -2,8 +2,15 @@ package com.luoxi.hrabe.controller;
 
 import com.luoxi.hrabe.Util.JwtUtil;
 import com.luoxi.hrabe.Util.Md5Util;
+import com.luoxi.hrabe.mapper.ST_listMapper;
+import com.luoxi.hrabe.mapper.UL_listMapper;
 import com.luoxi.hrabe.pojo.Result;
+import com.luoxi.hrabe.pojo.UL_list;
+import com.luoxi.hrabe.pojo.User_enc;
 import com.luoxi.hrabe.pojo.User_login;
+import com.luoxi.hrabe.service.ST_listService;
+import com.luoxi.hrabe.service.UL_listService;
+import com.luoxi.hrabe.service.User_encService;
 import com.luoxi.hrabe.service.User_loginService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -19,15 +26,24 @@ import java.util.concurrent.TimeUnit;
 
 @RestController
 @RequestMapping("/user")
-public class User_loginController {
+public class UserController {
     @Autowired
     private User_loginService user_loginService;
+
+    @Autowired
+    private User_encService user_encService;
+
+    @Autowired
+    private UL_listService ul_listService;
+
+    @Autowired
+    private ST_listService st_listService;
 
     @Autowired
     private StringRedisTemplate stringRedisTemplate;
 
     @PostMapping("/register")
-    public Result register(@RequestBody User_login user) {
+    public Result register(@RequestBody User_login user) throws Exception {
         String userId = user.getUserId();
         String userName = user.getUserName();
         String password = user.getPassword();
@@ -47,8 +63,18 @@ public class User_loginController {
         System.out.println("userId length: " + userId.length() + ", value: " + userId);
 
         User_login u = user_loginService.findById(userId);
-        if (u == null) {
-            user_loginService.register(userId, userName, password, attributes, userPic);
+        User_enc u1=user_encService.findById(userId);
+
+        if (u == null && u1 == null) {
+            user_loginService.register(userId, userName, password, attributes, userPic); //登录注册
+            user_encService.addUser_enc(userId, attributes); // 存储用户的密钥信息
+            //将用户添加到用户列表
+            User_enc u2=user_encService.findById(userId);
+            UL_list ul=new UL_list(userId,attributes,u2.getTk1(), u2.getTk2(), u2.getHk());
+            ul_listService.addUL(ul);
+            //更新状态
+            st_listService.updateUL();
+
             return Result.success();
         } else {
             return Result.error("用户ID已被占用");
@@ -61,7 +87,7 @@ public class User_loginController {
         User_login u = user_loginService.findById(userId);
         //判断该用户是否存在
         if (u == null) {
-            return Result.error("用户名错误");
+            return Result.error("用户ID错误");
         }
 
         //判断密码是否正确  loginUser对象中的password是密文

@@ -8,10 +8,8 @@ import lombok.NoArgsConstructor;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class UL_list {
-    private String userId;
-    private String attributes;
-    private String tk1;
-    private String tk2;
-    private String hk;
+public class Public_param {
+    private Integer ind; //主键
+    private String mpk;
+    private String msk;
 }

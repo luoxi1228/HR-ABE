@@ -9,34 +9,30 @@ CREATE TABLE user_login (
 drop table user_login;
 CREATE TABLE user_enc (
                       user_id VARCHAR(50) PRIMARY KEY,  -- 用户 ID，作为主键
-                      TK1 TEXT NOT NULL,                -- 存储较长字符串（最大 65,535 字节）
-                      TK2 TEXT NOT NULL,                -- 存储较长字符串
-                      HK TEXT NOT NULL,                 -- 存储较长字符串
-                      DK TEXT NOT NULL                  -- 存储较长字符串
+                      tk1 TEXT NOT NULL,                -- 存储较长字符串（最大 65,535 字节）
+                      tk2 TEXT NOT NULL,                -- 存储较长字符串
+                      hk TEXT NOT NULL,                 -- 存储较长字符串
+                      dk TEXT NOT NULL                  -- 存储较长字符串
 );
 
 CREATE TABLE ul_list (
                          user_id VARCHAR(50) PRIMARY KEY,  -- 用户 ID，作为主键
                          attributes VARCHAR(255),          -- `attributes` 字段（假设内容较长，使用 `TEXT` 类型）
-                         TK1 TEXT NOT NULL,                 -- `TK1` 字段（使用 `TEXT` 类型，存储较长字符串）
-                         TK2 TEXT NOT NULL,                 -- `TK2` 字段
-                         HK TEXT NOT NULL                   -- `HK` 字段
+                         tk1 TEXT NOT NULL,                 -- `TK1` 字段（使用 `TEXT` 类型，存储较长字符串）
+                         tk2 TEXT NOT NULL,                 -- `TK2` 字段
+                         hk TEXT NOT NULL                   -- `HK` 字段
 );
 
 CREATE TABLE st_list (
-                        index1 VARCHAR(50) PRIMARY KEY,  -- 索引，作为主键
-                        sign TEXT NOT NULL
+    index1 INT PRIMARY KEY CHECK (index = 1),  -- 只提供最新的状态
+    sign TEXT NOT NULL
 );
 
-CREATE TABLE pulic_param (
-                         index1 VARCHAR(50) PRIMARY KEY,  -- 索引，作为主键
-                         sign TEXT NOT NULL
-);
 
 CREATE TABLE pulic_param (
-                             I INT AUTO_INCREMENT PRIMARY KEY,  -- `I` 字段为主键并设置为自增
-                             MPK TEXT NOT NULL,         -- `MPK` 字段，假设其为字符串，使用 `VARCHAR` 类型
-                             MSK TEXT NOT NULL          -- `MSK` 字段，假设其为字符串，使用 `VARCHAR` 类型
+                             ind INT PRIMARY KEY CHECK (ind = 1), -- 限制 user_id 只能为 1,  -- `ind` 字段为主键并设置为自增
+                             mpk TEXT NOT NULL,         -- `MPK` 字段，假设其为字符串，使用 `VARCHAR` 类型
+                             msk TEXT NOT NULL          -- `MSK` 字段，假设其为字符串，使用 `VARCHAR` 类型
 );
 
 CREATE TABLE message (
