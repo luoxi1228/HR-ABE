@@ -9,9 +9,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * @program: CSDN
  * @description: RSA工具类
- * @author: Alian
  **/
 public class RsaUtil {
 

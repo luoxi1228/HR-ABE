@@ -36,11 +36,15 @@ CREATE TABLE pulic_param (
 );
 
 CREATE TABLE message (
-                         user_id VARCHAR(50) PRIMARY KEY,  -- `userID` 字段作为主键
-                         encKey VARCHAR(255) NOT NULL,        -- `encKey` 字段，假设其为字符串，使用 `VARCHAR` 类型
-                         file_name VARCHAR(255) NOT NULL,  -- `fileName` 字段，假设其为字符串，使用 `VARCHAR` 类型
-                         file_type VARCHAR(50) NOT NULL,   -- `fileType` 字段，假设文件类型较短，使用 `VARCHAR(50)`
-                         file_size VARCHAR(50) NOT NULL,   -- `fileSize` 字段，使用 `VARCHAR(50)` 存储文件大小
-                         file_path TEXT NOT NULL,          -- `filePath` 字段，使用 `TEXT` 类型来存储较长路径
-                         time DATETIME NOT NULL            -- `time` 字段，存储文件上传时间，使用 `DATETIME` 类型
+    file_id INT AUTO_INCREMENT PRIMARY KEY,  -- 自增主键
+    user_id VARCHAR(50) NOT NULL,            -- `userID` 作为普通字段
+    enc_key TEXT NOT NULL,                    -- `encKey` 加密密钥
+    file_name VARCHAR(255) NOT NULL,          -- `fileName` 文件名
+    file_type VARCHAR(50) NOT NULL,           -- `fileType` 文件类型
+    file_size VARCHAR(50) NOT NULL,           -- `fileSize` 文件大小
+    file_path VARCHAR(500),                   -- `filePath` 存储路径
+    time TIMESTAMP DEFAULT CURRENT_TIMESTAMP, -- `time` 上传时间
+    policy VARCHAR(255)                        -- `policy` 存储策略
 );
+
+

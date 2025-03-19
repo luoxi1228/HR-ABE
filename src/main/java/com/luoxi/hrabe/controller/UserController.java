@@ -2,23 +2,21 @@ package com.luoxi.hrabe.controller;
 
 import com.luoxi.hrabe.Util.JwtUtil;
 import com.luoxi.hrabe.Util.Md5Util;
+import com.luoxi.hrabe.Util.ThreadLocalUtil;
 import com.luoxi.hrabe.mapper.ST_listMapper;
 import com.luoxi.hrabe.mapper.UL_listMapper;
 import com.luoxi.hrabe.pojo.Result;
 import com.luoxi.hrabe.pojo.UL_list;
 import com.luoxi.hrabe.pojo.User_enc;
 import com.luoxi.hrabe.pojo.User_login;
-import com.luoxi.hrabe.service.ST_listService;
-import com.luoxi.hrabe.service.UL_listService;
-import com.luoxi.hrabe.service.User_encService;
-import com.luoxi.hrabe.service.User_loginService;
+import com.luoxi.hrabe.service.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.util.StringUtils;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -38,6 +36,9 @@ public class UserController {
 
     @Autowired
     private ST_listService st_listService;
+
+    @Autowired
+    private FileService fileService;
 
     @Autowired
     private StringRedisTemplate stringRedisTemplate;
@@ -94,8 +95,8 @@ public class UserController {
         if (Md5Util.getMD5String(password).equals(u.getPassword())) {
             //登录成功
             Map<String, Object> claims = new HashMap<>();
-            claims.put("id", u.getUserId());
-            claims.put("username", u.getUserName());
+            claims.put("userId", u.getUserId());
+            claims.put("userName", u.getUserName());
             String token = JwtUtil.genToken(claims);
             //把token存储到redis中
             ValueOperations<String, String> operations = stringRedisTemplate.opsForValue();
@@ -103,6 +104,73 @@ public class UserController {
             return Result.success(token);
         }
         return Result.error("密码错误");
+    }
+
+    @GetMapping("/userInfo")
+    public Result<User_login> userInfo(/*@RequestHeader(name = "Authorization") String token*/) {
+        //根据用户名查询用户
+       /* Map<String, Object> map = JwtUtil.parseToken(token);
+        String username = (String) map.get("username");*/
+        Map<String, Object> map = ThreadLocalUtil.get();
+        String userId = (String) map.get("userId");
+        User_login user = user_loginService.findById(userId);
+        return Result.success(user);
+    }
+
+    @PutMapping("/update")
+    public Result update(@RequestBody  User_login user) {
+        Map<String, Object> map = ThreadLocalUtil.get();
+        String userId = (String) map.get("userId");
+        user.setUserId(userId);//获取当前登录的用户id
+        user_loginService.update(user);
+        return Result.success();
+    }
+
+    //更新用户头像
+    @PatchMapping("updatePic")
+    public Result updatePic(@RequestParam String userPic) {
+        user_loginService.updatePic(userPic);
+        return Result.success();
+    }
+
+    //修改密码
+    @PatchMapping("/updatePwd")
+    public Result updatePwd(@RequestBody Map<String, String> params,@RequestHeader("Authorization") String token) {
+        //1.校验参数
+        String oldPwd = params.get("old_pwd");
+        String newPwd = params.get("new_pwd");
+        String rePwd = params.get("re_pwd");
+
+        if (!StringUtils.hasLength(oldPwd) || !StringUtils.hasLength(newPwd) || !StringUtils.hasLength(rePwd)) {
+            return Result.error("缺少必要的参数");
+        }
+
+        //原密码是否正确
+        //调用userService根据用户名拿到原密码,再和old_pwd比对
+        Map<String,Object> map = ThreadLocalUtil.get();
+        String userId = (String) map.get("userId");
+        User_login loginUser = user_loginService.findById(userId);
+        if (!loginUser.getPassword().equals(Md5Util.getMD5String(oldPwd))){
+            return Result.error("原密码填写不正确");
+        }
+
+        //newPwd和rePwd是否一样
+        if (!rePwd.equals(newPwd)){
+            return Result.error("两次填写的新密码不一样");
+        }
+
+        //2.调用service完成密码更新
+        user_loginService.updatePwd(newPwd);
+        //删除redis中对应的token
+        ValueOperations<String, String> operations = stringRedisTemplate.opsForValue();
+        operations.getOperations().delete(token);
+        return Result.success();
+    }
+
+    @PostMapping("/uploadFile")
+    public Result uploadFile(@RequestParam("file") MultipartFile file, @RequestParam("password") String password,@RequestParam("policy") String policy) throws Exception {
+        fileService.uploadFile(file, password,policy);
+        return Result.success();
     }
 
 

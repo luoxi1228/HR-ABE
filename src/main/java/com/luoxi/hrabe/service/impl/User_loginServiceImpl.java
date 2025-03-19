@@ -3,6 +3,7 @@ package com.luoxi.hrabe.service.impl;
 import com.luoxi.hrabe.HRABE.HRABE;
 import com.luoxi.hrabe.HRABE.param.*;
 import com.luoxi.hrabe.Util.Md5Util;
+import com.luoxi.hrabe.Util.ThreadLocalUtil;
 import com.luoxi.hrabe.Util.Util;
 import com.luoxi.hrabe.mapper.User_encMapper;
 import com.luoxi.hrabe.mapper.User_loginMapper;
@@ -15,6 +16,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Map;
 
 @Service
 public class User_loginServiceImpl implements User_loginService {
@@ -39,4 +41,25 @@ public class User_loginServiceImpl implements User_loginService {
 
 
     }
+
+    @Override
+    public void update(User_login user) {
+        user_loginMapper.update(user);
+    }
+
+    @Override
+    public void updatePic(String userPic) {
+        Map<String,Object> map = ThreadLocalUtil.get();
+        String userId = (String) map.get("userId");
+        user_loginMapper.updatePic(userPic,userId);
+    }
+
+    @Override
+    public void updatePwd(String newPwd) {
+        Map<String,Object> map = ThreadLocalUtil.get();
+        String userId = (String) map.get("userId");
+        user_loginMapper.updatePwd(Md5Util.getMD5String(newPwd),userId);
+    }
+
+
 }
