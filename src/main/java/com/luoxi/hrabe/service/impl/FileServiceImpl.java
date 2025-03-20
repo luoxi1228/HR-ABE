@@ -134,35 +134,41 @@ public class FileServiceImpl implements FileService {
         MPK_h mpk_h=MPK_hSerializer.String2MPK(Mpk_str, pairing);
 
         User_enc userEnc=user_encMapper.findById(userId);
-        TK tk1= Util.String2TK(userEnc.getTk1(),pairing);
-        TK tk2= Util.String2TK(userEnc.getTk2(),pairing);
-        HK hk = Util.String2HK(userEnc.getHk(),pairing);
-        DK dk = Util.String2DK(userEnc.getDk(),pairing);
+        UL_list ul=ul_listMapper.findByUserId(userId);
+        if(ul==null){
+            System.out.println("用户已经被撤销!!!!");
+        }else{
+            TK tk1= Util.String2TK(ul.getTk1(),pairing);
+            TK tk2= Util.String2TK(ul.getTk2(),pairing);
+            HK hk = Util.String2HK(ul.getHk(),pairing);
+            DK dk = Util.String2DK(userEnc.getDk(),pairing);
 
-        List<UL_list> list = ul_listMapper.findAll();
-        List<UL> ulList=StUtil.convertList(list);
+            List<UL_list> list = ul_listMapper.findAll();
+            List<UL> ulList=StUtil.convertList(list);
 
-        String sign = st_listMapper.findNewST().getSign();
+            String sign = st_listMapper.findNewST().getSign();
 
-        ST st=new ST(sign,ulList,"1");
-        st.showST();
+            ST st=new ST(sign,ulList,"1");
+            st.showST();
 
-        Ciphertext ciphertext=CiphertextSerializer.String2Ciphertext(encKey);
-        ciphertext.showCipher();
+            Ciphertext ciphertext=CiphertextSerializer.String2Ciphertext(encKey);
+            ciphertext.showCipher();
 
-        PTC  ptc = HRABE.Transform1_h(tk1,tk2,st,userId,ciphertext,mpk_h,pairing);
-        assert ptc != null;
-        ptc.showPTC();
+            PTC  ptc = HRABE.Transform1_h(tk1,tk2,st,userId,ciphertext,mpk_h,pairing);
+            assert ptc != null;
+            ptc.showPTC();
 
-        TC tc= HRABE.Transform2_h(ptc,hk,pairing);
+            TC tc= HRABE.Transform2_h(ptc,hk,pairing);
 
-        String password =HRABE.Dec_h(dk,tc,mpk_h,pairing);
-        System.out.println(password);
-        // 3. 读取加密文件
-        byte[] encryptedFileBytes = Files.readAllBytes(Paths.get(filePath));
+            String password =HRABE.Dec_h(dk,tc,mpk_h,pairing);
+            System.out.println(password);
+            // 3. 读取加密文件
+            byte[] encryptedFileBytes = Files.readAllBytes(Paths.get(filePath));
 
-        // 4. 用 AES 解密文件
-        return AesUtil.decrypt(encryptedFileBytes, password);
+            // 4. 用 AES 解密文件
+            return AesUtil.decrypt(encryptedFileBytes, password);
+        }
+        return null;
     }
 
 }

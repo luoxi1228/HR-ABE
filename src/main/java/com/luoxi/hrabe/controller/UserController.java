@@ -176,16 +176,20 @@ public class UserController {
     }
 
     @PostMapping("/download")
-    public void downloadFile(@RequestParam String fileName,
+    public Result downloadFile(@RequestParam String fileName,
                              HttpServletResponse response) throws Exception {
         // 1. 调用 FileService 解密文件并返回文件流
         byte[] decryptedFileBytes = fileService.dowenFile(fileName);
-
-        // 5. 发送解密后的文件给前端
-        response.setContentType("application/octet-stream");
-        response.setHeader("Content-Disposition", "attachment; filename=" + fileName);
-        response.getOutputStream().write(decryptedFileBytes);
-        response.getOutputStream().flush();
+        if (decryptedFileBytes != null) {
+            //发送解密后的文件给前端
+            response.setContentType("application/octet-stream");
+            response.setHeader("Content-Disposition", "attachment; filename=" + fileName);
+            response.getOutputStream().write(decryptedFileBytes);
+            response.getOutputStream().flush();
+            return Result.success();
+        }else{
+            return Result.error("获取失败");
+        }
     }
 
 
