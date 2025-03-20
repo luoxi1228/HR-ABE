@@ -25,7 +25,7 @@ public class Public_paramServiceImpl implements Public_paramService {
 
     @Override
     public Public_param findPublicParam() {
-        return publicParamMapper.findPulicParm();
+        return publicParamMapper.findPublicParm();
     }
 
     @Override
@@ -34,19 +34,27 @@ public class Public_paramServiceImpl implements Public_paramService {
 
         Pairing pairing = PairingFactory.getPairing("a.properties");
 
-        SetupResult_h setupResult=HRABE.Setup_h(pairing);
+        SetupResult_h setupResult = HRABE.Setup_h(pairing);
         //setupResult.show();
 
         //初始化的参数
-        MPK_h mpk_h=setupResult.getMpk_h();
-        MSK_h msk_h=setupResult.getMsk_h();
+        MPK_h mpk_h = setupResult.getMpk_h();
+        MSK_h msk_h = setupResult.getMsk_h();
 
-        String mpk= MPK_hSerializer.MPK2String(mpk_h);
-        String msk= MSK_hSerializer.MSK2String(msk_h);
+        String mpk = MPK_hSerializer.MPK2String(mpk_h);
+        String msk = MSK_hSerializer.MSK2String(msk_h);
         //初始化MSK，MPK
-        publicParamMapper.updatePublicParam(mpk,msk);
-
+        if(publicParamMapper.findPublicParm() != null){
+            publicParamMapper.updatePublicParam(mpk, msk);
+        }else {
+            publicParamMapper.addPublic(mpk, msk);
+            System.out.println("初始化公共参数");
+        }
         //初始化ST
-        stListMapper.addST("sign");
+        if (stListMapper.findNewST() != null) {
+            stListMapper.updateST("sign");
+        } else {
+            stListMapper.addST("sign");
+        }
     }
 }

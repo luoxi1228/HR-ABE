@@ -33,4 +33,5 @@ public class UL_listServiceImpl implements UL_listService {
     public List<UL_list> getAllULList() {
         return ul_listMapper.findAll();
     }
+
 }

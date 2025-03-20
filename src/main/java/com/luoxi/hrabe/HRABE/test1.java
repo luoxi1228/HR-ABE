@@ -14,7 +14,7 @@ import java.util.List;
 public class test1 {
     public static void main(String[] args) throws Exception {
 
-        Pairing pairing = PairingFactory.getPairing("a.properties");
+        /*Pairing pairing = PairingFactory.getPairing("a.properties");
 
         SetupResult_h setupResult=HRABE.Setup_h(pairing);
         //setupResult.show();
@@ -54,7 +54,7 @@ public class test1 {
         }
 
 
-/*        //注册新的DU1
+        //注册新的DU1
         String ID1="001";
         JoinResult JR1=HRABE.Join(mpk_h,msk_h,ulList,ID1,attributes1,pairing);
         //更新状态1
@@ -105,5 +105,7 @@ public class test1 {
         //Dec
         String message=HRABE.Dec_h(JR1.getDk(),tc,mpk_h,pairing);
         System.out.println(message);*/
+
+        System.out.println("    123456");
     }
 }

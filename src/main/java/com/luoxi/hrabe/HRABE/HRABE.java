@@ -103,6 +103,7 @@ public class HRABE {
         if(b1 && b2){
             return abe2OD.transform1(tk1,tk2,ciphertext,pairing);
         }
+        System.out.println("用户已经被撤销了");
         return null;
     }
 
@@ -131,7 +132,7 @@ public class HRABE {
 
     public static String Dec_h(DK dk,TC tc,MPK_h mpk_h,Pairing pairing) throws Exception {
         ABE2OD abe2OD = new ABE2OD();
-        return utils.binaryToString(abe2OD.Dec(dk,tc,mpk_h.getPk(),pairing));
+        return utils.binaryToString(abe2OD.Dec(dk,tc,mpk_h.getPk(),pairing)).replaceAll("[\\p{C}\\p{Z}]", "").trim();
     }
 
 }

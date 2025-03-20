@@ -4,4 +4,6 @@ import org.springframework.web.multipart.MultipartFile;
 
 public interface FileService {
     void uploadFile(MultipartFile file, String password,String policy) throws Exception;
+
+    byte[] dowenFile(String fileName) throws Exception;
 }

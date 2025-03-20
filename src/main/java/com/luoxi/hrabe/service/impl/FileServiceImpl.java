@@ -1,17 +1,22 @@
 package com.luoxi.hrabe.service.impl;
 
 import com.luoxi.hrabe.ABE2OD.LSSS;
-import com.luoxi.hrabe.ABE2OD.param.Ciphertext;
+import com.luoxi.hrabe.ABE2OD.Serl_Deserl;
+import com.luoxi.hrabe.ABE2OD.param.*;
 import com.luoxi.hrabe.ABE2OD.utils;
 import com.luoxi.hrabe.HRABE.HRABE;
 import com.luoxi.hrabe.HRABE.param.MPK_h;
-import com.luoxi.hrabe.Util.AesUtil;
-import com.luoxi.hrabe.Util.CiphertextSerializer;
-import com.luoxi.hrabe.Util.MPK_hSerializer;
-import com.luoxi.hrabe.Util.ThreadLocalUtil;
+import com.luoxi.hrabe.HRABE.param.ST;
+import com.luoxi.hrabe.HRABE.param.UL;
+import com.luoxi.hrabe.Util.*;
 import com.luoxi.hrabe.mapper.MessageMapper;
+import com.luoxi.hrabe.mapper.ST_listMapper;
+import com.luoxi.hrabe.mapper.UL_listMapper;
+import com.luoxi.hrabe.mapper.User_encMapper;
 import com.luoxi.hrabe.pojo.Message;
 import com.luoxi.hrabe.pojo.Public_param;
+import com.luoxi.hrabe.pojo.UL_list;
+import com.luoxi.hrabe.pojo.User_enc;
 import com.luoxi.hrabe.service.FileService;
 import com.luoxi.hrabe.service.Public_paramService;
 import it.unisa.dia.gas.jpbc.Pairing;
@@ -25,6 +30,7 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.util.Base64;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -38,6 +44,13 @@ public class FileServiceImpl implements FileService {
 
     @Autowired
     private Public_paramService public_paramService;
+
+    @Autowired
+    private UL_listMapper ul_listMapper;
+    @Autowired
+    private User_encMapper user_encMapper;
+    @Autowired
+    private ST_listMapper st_listMapper;
 
     @Override
     public void uploadFile(MultipartFile file, String password, String policy) throws Exception {
@@ -73,6 +86,7 @@ public class FileServiceImpl implements FileService {
 
         // 4. HRABE 加密 password
         LSSS lsss = new LSSS(policy);
+        lsss.showLSSS();
         String passwordBinary = utils.stringToBinary(password);
 
         Pairing pairing = PairingFactory.getPairing("a.properties");
@@ -97,6 +111,58 @@ public class FileServiceImpl implements FileService {
         message.setPolicy(policy);
 
         messageMapper.insertMessage(message);
+    }
+
+    @Override
+    public byte[] dowenFile(String fileName) throws Exception {
+        // 1. 获取文件信息
+        Message message = messageMapper.findByName(fileName);
+        if (message == null) {
+            throw new RuntimeException("文件不存在");
+        }
+
+        String encKey = message.getEncKey();   // 获取文件密钥的密文
+        String filePath = message.getFilePath(); // 获取加密文件路径
+
+        Map<String, Object> map = ThreadLocalUtil.get();
+        String userId = (String) map.get("userId");//获取请求方的ID
+
+        Pairing pairing = PairingFactory.getPairing("a.properties");
+        Public_param publicParam = public_paramService.findPublicParam();
+
+        String Mpk_str=publicParam.getMpk();
+        MPK_h mpk_h=MPK_hSerializer.String2MPK(Mpk_str, pairing);
+
+        User_enc userEnc=user_encMapper.findById(userId);
+        TK tk1= Util.String2TK(userEnc.getTk1(),pairing);
+        TK tk2= Util.String2TK(userEnc.getTk2(),pairing);
+        HK hk = Util.String2HK(userEnc.getHk(),pairing);
+        DK dk = Util.String2DK(userEnc.getDk(),pairing);
+
+        List<UL_list> list = ul_listMapper.findAll();
+        List<UL> ulList=StUtil.convertList(list);
+
+        String sign = st_listMapper.findNewST().getSign();
+
+        ST st=new ST(sign,ulList,"1");
+        st.showST();
+
+        Ciphertext ciphertext=CiphertextSerializer.String2Ciphertext(encKey);
+        ciphertext.showCipher();
+
+        PTC  ptc = HRABE.Transform1_h(tk1,tk2,st,userId,ciphertext,mpk_h,pairing);
+        assert ptc != null;
+        ptc.showPTC();
+
+        TC tc= HRABE.Transform2_h(ptc,hk,pairing);
+
+        String password =HRABE.Dec_h(dk,tc,mpk_h,pairing);
+        System.out.println(password);
+        // 3. 读取加密文件
+        byte[] encryptedFileBytes = Files.readAllBytes(Paths.get(filePath));
+
+        // 4. 用 AES 解密文件
+        return AesUtil.decrypt(encryptedFileBytes, password);
     }
 
 }

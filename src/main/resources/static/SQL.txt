@@ -47,4 +47,9 @@ CREATE TABLE message (
     policy VARCHAR(255)                        -- `policy` 存储策略
 );
 
+CREATE TABLE admin (
+                             admin_id VARCHAR(50) PRIMARY KEY,  -- 用户 ID，作为主键
+                             password VARCHAR(255)   -- 密码（通常要加密存储）
+);
+
 

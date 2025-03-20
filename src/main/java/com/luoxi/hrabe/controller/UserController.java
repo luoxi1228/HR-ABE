@@ -10,6 +10,7 @@ import com.luoxi.hrabe.pojo.UL_list;
 import com.luoxi.hrabe.pojo.User_enc;
 import com.luoxi.hrabe.pojo.User_login;
 import com.luoxi.hrabe.service.*;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
@@ -170,7 +171,21 @@ public class UserController {
     @PostMapping("/uploadFile")
     public Result uploadFile(@RequestParam("file") MultipartFile file, @RequestParam("password") String password,@RequestParam("policy") String policy) throws Exception {
         fileService.uploadFile(file, password,policy);
+        System.out.println("文件上传成功");
         return Result.success();
+    }
+
+    @PostMapping("/download")
+    public void downloadFile(@RequestParam String fileName,
+                             HttpServletResponse response) throws Exception {
+        // 1. 调用 FileService 解密文件并返回文件流
+        byte[] decryptedFileBytes = fileService.dowenFile(fileName);
+
+        // 5. 发送解密后的文件给前端
+        response.setContentType("application/octet-stream");
+        response.setHeader("Content-Disposition", "attachment; filename=" + fileName);
+        response.getOutputStream().write(decryptedFileBytes);
+        response.getOutputStream().flush();
     }
 
 

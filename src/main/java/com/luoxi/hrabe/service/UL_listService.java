@@ -16,4 +16,5 @@ public interface UL_listService {
 
     //获取列表的所有用户
     List<UL_list> getAllULList();
+
 }
