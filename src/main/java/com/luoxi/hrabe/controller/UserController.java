@@ -14,11 +14,14 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
+import org.springframework.http.MediaType;
 import org.springframework.util.StringUtils;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -174,7 +177,7 @@ public class UserController {
         System.out.println("文件上传成功");
         return Result.success();
     }
-
+/*
     @PostMapping("/download")
     public Result downloadFile(@RequestParam String fileName,
                              HttpServletResponse response) throws Exception {
@@ -190,8 +193,41 @@ public class UserController {
         }else{
             return Result.error("获取失败");
         }
+    }*/
+
+    @GetMapping(value = "/download", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter downloadFile(@RequestParam String fileName,
+                                   HttpServletResponse response) throws Exception {
+        SseEmitter emitter = new SseEmitter(0L);
+
+        // 获取当前线程的上下文
+        Map<String, Object> currentThreadContext = ThreadLocalUtil.get();
+
+        // 在新线程中处理下载逻辑，并传递上下文
+        new Thread(() -> {
+            try {
+                // 在新线程中设置上下文
+                if (currentThreadContext != null) {
+                    ThreadLocalUtil.set(currentThreadContext);
+                }
+                fileService.downloadFileWithStatus(fileName, emitter);
+            } catch (Exception e) {
+                try {
+                    emitter.send(SseEmitter.event()
+                            .name("error")
+                            .data("处理失败: " + e.getMessage()));
+                } catch (IOException ioe) {
+                    // 处理发送失败
+                }
+            } finally {
+                emitter.complete();
+                // 清理新线程的 ThreadLocal
+                ThreadLocalUtil.remove();
+            }
+        }).start();
+
+        return emitter;
     }
-
-
 }
+
 

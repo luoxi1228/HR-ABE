@@ -1,19 +1,19 @@
-CREATE TABLE user_login (
-                       user_id VARCHAR(50) PRIMARY KEY,  -- 用户 ID，作为主键
-                       user_name VARCHAR(100) ,  -- 用户名
-                       password VARCHAR(255) ,   -- 密码（通常要加密存储）
-                       attributes VARCHAR(255),    -- 用户属性（可能较长，适合 TEXT 类型）
-                       user_pic varchar(255)           -- 头像地址
-
-);
-drop table user_login;
 CREATE TABLE user_enc (
-                      user_id VARCHAR(50) PRIMARY KEY,  -- 用户 ID，作为主键
-                      tk1 TEXT NOT NULL,                -- 存储较长字符串（最大 65,535 字节）
-                      tk2 TEXT NOT NULL,                -- 存储较长字符串
-                      hk TEXT NOT NULL,                 -- 存储较长字符串
-                      dk TEXT NOT NULL                  -- 存储较长字符串
+                          user_id VARCHAR(50) PRIMARY KEY,  -- 用户 ID，作为主键
+                          tk1 TEXT ,                -- 存储较长字符串（最大 65,535 字节）
+                          tk2 TEXT ,                -- 存储较长字符串
+                          hk TEXT ,                 -- 存储较长字符串
+                          dk TEXT                  -- 存储较长字符串
 );
+
+
+
+CREATE TABLE pulic_param (
+                             ind INT PRIMARY KEY CHECK (ind = 1), -- 限制 user_id 只能为 1,  -- `ind` 字段为主键并设置为自增
+                             mpk TEXT NOT NULL,         -- `MPK` 字段，假设其为字符串，使用 `VARCHAR` 类型
+                             msk TEXT NOT NULL          -- `MSK` 字段，假设其为字符串，使用 `VARCHAR` 类型
+);
+
 
 CREATE TABLE ul_list (
                          user_id VARCHAR(50) PRIMARY KEY,  -- 用户 ID，作为主键
@@ -24,32 +24,26 @@ CREATE TABLE ul_list (
 );
 
 CREATE TABLE st_list (
-    index1 INT PRIMARY KEY CHECK (index = 1),  -- 只提供最新的状态
-    sign TEXT NOT NULL
+                         index1 INT PRIMARY KEY CHECK (index1 = 1),  -- 只提供最新的状态
+                         sign TEXT NOT NULL
 );
 
-
-CREATE TABLE pulic_param (
-                             ind INT PRIMARY KEY CHECK (ind = 1), -- 限制 user_id 只能为 1,  -- `ind` 字段为主键并设置为自增
-                             mpk TEXT NOT NULL,         -- `MPK` 字段，假设其为字符串，使用 `VARCHAR` 类型
-                             msk TEXT NOT NULL          -- `MSK` 字段，假设其为字符串，使用 `VARCHAR` 类型
-);
 
 CREATE TABLE message (
-    file_id INT AUTO_INCREMENT PRIMARY KEY,  -- 自增主键
-    user_id VARCHAR(50) NOT NULL,            -- `userID` 作为普通字段
-    enc_key TEXT NOT NULL,                    -- `encKey` 加密密钥
-    file_name VARCHAR(255) NOT NULL,          -- `fileName` 文件名
-    file_type VARCHAR(50) NOT NULL,           -- `fileType` 文件类型
-    file_size VARCHAR(50) NOT NULL,           -- `fileSize` 文件大小
-    file_path VARCHAR(500),                   -- `filePath` 存储路径
-    time TIMESTAMP DEFAULT CURRENT_TIMESTAMP, -- `time` 上传时间
-    policy VARCHAR(255)                        -- `policy` 存储策略
+                         file_id INT AUTO_INCREMENT PRIMARY KEY,  -- 自增主键
+                         user_id VARCHAR(50) NOT NULL,            -- `userID` 作为普通字段
+                         enc_key TEXT NOT NULL,                    -- `encKey` 加密密钥
+                         file_name VARCHAR(255) NOT NULL,          -- `fileName` 文件名
+                         file_type VARCHAR(50) NOT NULL,           -- `fileType` 文件类型
+                         file_size VARCHAR(50) NOT NULL,           -- `fileSize` 文件大小
+                         file_path VARCHAR(500),                   -- `filePath` 存储路径
+                         time TIMESTAMP DEFAULT CURRENT_TIMESTAMP, -- `time` 上传时间
+                         policy VARCHAR(255)                        -- `policy` 存储策略
 );
 
 CREATE TABLE admin (
-                             admin_id VARCHAR(50) PRIMARY KEY,  -- 用户 ID，作为主键
-                             password VARCHAR(255)   -- 密码（通常要加密存储）
+                       admin_id VARCHAR(50) PRIMARY KEY,  -- 用户 ID，作为主键
+                       password VARCHAR(255)   -- 密码（通常要加密存储）
 );
 
-
+drop table message;

@@ -25,6 +25,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -113,7 +114,7 @@ public class FileServiceImpl implements FileService {
         messageMapper.insertMessage(message);
     }
 
-    @Override
+/*    @Override
     public byte[] dowenFile(String fileName) throws Exception {
         // 1. 获取文件信息
         Message message = messageMapper.findByName(fileName);
@@ -153,13 +154,13 @@ public class FileServiceImpl implements FileService {
 
             Ciphertext ciphertext=CiphertextSerializer.String2Ciphertext(encKey);
             ciphertext.showCipher();
-
+            //transform1
             PTC  ptc = HRABE.Transform1_h(tk1,tk2,st,userId,ciphertext,mpk_h,pairing);
             assert ptc != null;
             ptc.showPTC();
-
+            //transform2
             TC tc= HRABE.Transform2_h(ptc,hk,pairing);
-
+            //解密
             String password =HRABE.Dec_h(dk,tc,mpk_h,pairing);
             System.out.println(password);
             // 3. 读取加密文件
@@ -169,6 +170,111 @@ public class FileServiceImpl implements FileService {
             return AesUtil.decrypt(encryptedFileBytes, password);
         }
         return null;
+    }*/
+
+    @Override
+    public void downloadFileWithStatus(String fileName, SseEmitter emitter) throws Exception {
+        // 1. 获取文件信息
+        Message message = messageMapper.findByName(fileName);
+        if (message == null) {
+            emitter.send(SseEmitter.event()
+                    .name("error")
+                    .data("文件不存在"));
+            return;
+        }
+
+        String encKey = message.getEncKey();
+        String filePath = message.getFilePath();
+
+        Map<String, Object> map = ThreadLocalUtil.get();
+        String userId = (String) map.get("userId");
+
+        Pairing pairing = PairingFactory.getPairing("a.properties");
+        Public_param publicParam = public_paramService.findPublicParam();
+
+        String Mpk_str = publicParam.getMpk();
+        MPK_h mpk_h = MPK_hSerializer.String2MPK(Mpk_str, pairing);
+
+        User_enc userEnc = user_encMapper.findById(userId);
+        UL_list ul = ul_listMapper.findByUserId(userId);
+
+        // 发送用户状态
+        if (ul == null) {
+            emitter.send(SseEmitter.event()
+                    .name("userStatus")
+                    .data("用户已经被撤销"));
+            return;
+        } else {
+            emitter.send(SseEmitter.event()
+                    .name("userStatus")
+                    .data("用户存在于UL列表"));
+        }
+
+        TK tk1 = Util.String2TK(ul.getTk1(), pairing);
+        TK tk2 = Util.String2TK(ul.getTk2(), pairing);
+        HK hk = Util.String2HK(ul.getHk(), pairing);
+        DK dk = Util.String2DK(userEnc.getDk(), pairing);
+
+        List<UL_list> list = ul_listMapper.findAll();
+        List<UL> ulList = StUtil.convertList(list);
+        String sign = st_listMapper.findNewST().getSign();
+        ST st = new ST(sign, ulList, "1");
+
+        Ciphertext ciphertext = CiphertextSerializer.String2Ciphertext(encKey);
+
+        // transform1
+        emitter.send(SseEmitter.event()
+                .name("transform1")
+                .data("开始执行Transform1"));
+        PTC ptc = HRABE.Transform1_h(tk1, tk2, st, userId, ciphertext, mpk_h, pairing);
+        if (ptc == null) {
+            emitter.send(SseEmitter.event()
+                    .name("transform1")
+                    .data("Transform1执行失败"));
+            return;
+        }
+        emitter.send(SseEmitter.event()
+                .name("transform1")
+                .data("Transform1执行成功"));
+
+        // transform2
+        emitter.send(SseEmitter.event()
+                .name("transform2")
+                .data("开始执行Transform2"));
+        TC tc = HRABE.Transform2_h(ptc, hk, pairing);
+        if (tc == null) {
+            emitter.send(SseEmitter.event()
+                    .name("transform2")
+                    .data("Transform2执行失败"));
+            return;
+        }
+        emitter.send(SseEmitter.event()
+                .name("transform2")
+                .data("Transform2执行成功"));
+
+        // 解密
+        emitter.send(SseEmitter.event()
+                .name("decryption")
+                .data("开始执行解密"));
+        String password = HRABE.Dec_h(dk, tc, mpk_h, pairing);
+        if (password == null) {
+            emitter.send(SseEmitter.event()
+                    .name("decryption")
+                    .data("解密失败"));
+            return;
+        }
+        emitter.send(SseEmitter.event()
+                .name("decryption")
+                .data("解密成功"));
+
+        // 读取并解密文件
+        byte[] encryptedFileBytes = Files.readAllBytes(Paths.get(filePath));
+        byte[] decryptedFileBytes = AesUtil.decrypt(encryptedFileBytes, password);
+
+        // 发送文件数据
+        emitter.send(SseEmitter.event()
+                .name("file")
+                .data(Base64.getEncoder().encodeToString(decryptedFileBytes)));
     }
 
 }
