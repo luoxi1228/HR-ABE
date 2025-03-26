@@ -1,12 +1,22 @@
 package com.luoxi.hrabe.service;
 
+import com.luoxi.hrabe.pojo.Message;
 import org.springframework.web.multipart.MultipartFile;
-import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+
+import java.util.List;
 
 public interface FileService {
     void uploadFile(MultipartFile file, String password,String policy) throws Exception;
 
     //byte[] dowenFile(String fileName) throws Exception;
 
-    void downloadFileWithStatus(String fileName, SseEmitter emitter)throws Exception;
+    byte[] downloadFile(String userId, String fileName)throws Exception;
+
+    List<Message> findMessageById(String userId);
+
+    //删除消息
+    void deleteMessage(String userId,String fileName);
+
+    //查看所有消息
+    List<Message> getAllMessage();
 }

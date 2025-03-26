@@ -1,6 +1,7 @@
 package com.luoxi.hrabe.service;
 
 import com.luoxi.hrabe.pojo.User_login;
+import org.springframework.web.multipart.MultipartFile;
 
 public interface User_loginService {
     //根据用户id查询用户
@@ -11,7 +12,7 @@ public interface User_loginService {
 
     void update(User_login user);
 
-    void updatePic(String userPic);
+    void updatePic(MultipartFile file);
 
     void updatePwd(String newPwd);
 }

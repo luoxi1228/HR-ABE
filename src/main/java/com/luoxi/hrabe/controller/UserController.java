@@ -5,16 +5,15 @@ import com.luoxi.hrabe.Util.Md5Util;
 import com.luoxi.hrabe.Util.ThreadLocalUtil;
 import com.luoxi.hrabe.mapper.ST_listMapper;
 import com.luoxi.hrabe.mapper.UL_listMapper;
-import com.luoxi.hrabe.pojo.Result;
-import com.luoxi.hrabe.pojo.UL_list;
-import com.luoxi.hrabe.pojo.User_enc;
-import com.luoxi.hrabe.pojo.User_login;
+import com.luoxi.hrabe.pojo.*;
 import com.luoxi.hrabe.service.*;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.util.StringUtils;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -22,7 +21,9 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.io.IOException;
+import java.net.URLEncoder;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
@@ -53,7 +54,7 @@ public class UserController {
         String userName = user.getUserName();
         String password = user.getPassword();
         String attributes = user.getAttributes();
-        String userPic = user.getUserPic();
+        String userPic = "src/main/resources/Picture/1.jpg"; // Set default picture path
 
         // 用户ID格式校验 (必须以 H 开头，并跟随 6 位数字)
         if (userId == null || !userId.matches("^H\\d{6}$")) {
@@ -132,9 +133,13 @@ public class UserController {
 
     //更新用户头像
     @PatchMapping("updatePic")
-    public Result updatePic(@RequestParam String userPic) {
-        user_loginService.updatePic(userPic);
-        return Result.success();
+    public Result updatePic(@RequestParam("file") MultipartFile file) {
+        try {
+            user_loginService.updatePic(file);
+            return Result.success("头像更新成功");
+        } catch (Exception e) {
+            return Result.error("头像上传失败: " + e.getMessage());
+        }
     }
 
     //修改密码
@@ -177,57 +182,58 @@ public class UserController {
         System.out.println("文件上传成功");
         return Result.success();
     }
-/*
-    @PostMapping("/download")
-    public Result downloadFile(@RequestParam String fileName,
-                             HttpServletResponse response) throws Exception {
-        // 1. 调用 FileService 解密文件并返回文件流
-        byte[] decryptedFileBytes = fileService.dowenFile(fileName);
-        if (decryptedFileBytes != null) {
-            //发送解密后的文件给前端
-            response.setContentType("application/octet-stream");
-            response.setHeader("Content-Disposition", "attachment; filename=" + fileName);
-            response.getOutputStream().write(decryptedFileBytes);
-            response.getOutputStream().flush();
-            return Result.success();
-        }else{
-            return Result.error("获取失败");
+
+    // downloadFile 接口保持不变，但调整 sendStatus 调用
+    @GetMapping("/downloadFile")
+    public ResponseEntity<byte[]> downloadFile(@RequestParam String fileName) throws Exception {
+        Map<String, Object> map = ThreadLocalUtil.get();
+        String userId = (String) map.get("userId");
+
+        // 在新线程中执行解密过程，但需要等待结果以返回文件
+        byte[] decryptedFileBytes = null;
+        try {
+            // 同步调用，确保返回文件内容
+            decryptedFileBytes = fileService.downloadFile(userId, fileName);
+        } catch (Exception e) {
+            // 异常已在 downloadFile 方法中通过 WebSocket 发送，无需重复处理
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(null);
         }
-    }*/
 
-    @GetMapping(value = "/download", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public SseEmitter downloadFile(@RequestParam String fileName,
-                                   HttpServletResponse response) throws Exception {
-        SseEmitter emitter = new SseEmitter(0L);
+        if (decryptedFileBytes == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(null);
+        }
 
-        // 获取当前线程的上下文
-        Map<String, Object> currentThreadContext = ThreadLocalUtil.get();
-
-        // 在新线程中处理下载逻辑，并传递上下文
-        new Thread(() -> {
-            try {
-                // 在新线程中设置上下文
-                if (currentThreadContext != null) {
-                    ThreadLocalUtil.set(currentThreadContext);
-                }
-                fileService.downloadFileWithStatus(fileName, emitter);
-            } catch (Exception e) {
-                try {
-                    emitter.send(SseEmitter.event()
-                            .name("error")
-                            .data("处理失败: " + e.getMessage()));
-                } catch (IOException ioe) {
-                    // 处理发送失败
-                }
-            } finally {
-                emitter.complete();
-                // 清理新线程的 ThreadLocal
-                ThreadLocalUtil.remove();
-            }
-        }).start();
-
-        return emitter;
+        return ResponseEntity.ok()
+                .header("Content-Disposition", "attachment; filename=" + URLEncoder.encode(fileName, "UTF-8"))
+                .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                .body(decryptedFileBytes);
     }
+    @GetMapping("/userMessage")
+    public Result userMessage() {
+        Map<String, Object> map = ThreadLocalUtil.get();
+        String userId = (String) map.get("userId");
+        List<Message> messageList=fileService.findMessageById(userId);
+        return Result.success(messageList);
+    }
+
+    @PostMapping("/deleteMessage")
+    public Result deleteMessage(@RequestParam("fileName") String fileName) {
+        Map<String, Object> map = ThreadLocalUtil.get();
+        String userId = (String) map.get("userId");
+        fileService.deleteMessage(userId, fileName);
+        return Result.success();
+    }
+
+    @GetMapping("/allMessage")
+    public Result allMessage() {
+        List<Message> messageList = fileService.getAllMessage();
+        return Result.success(messageList);
+    }
+
+
+
 }
 
 

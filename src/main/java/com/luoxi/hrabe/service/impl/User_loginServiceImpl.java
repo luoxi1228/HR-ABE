@@ -1,21 +1,16 @@
 package com.luoxi.hrabe.service.impl;
 
-import com.luoxi.hrabe.HRABE.HRABE;
-import com.luoxi.hrabe.HRABE.param.*;
 import com.luoxi.hrabe.Util.Md5Util;
 import com.luoxi.hrabe.Util.ThreadLocalUtil;
-import com.luoxi.hrabe.Util.Util;
-import com.luoxi.hrabe.mapper.User_encMapper;
 import com.luoxi.hrabe.mapper.User_loginMapper;
-import com.luoxi.hrabe.pojo.User_enc;
 import com.luoxi.hrabe.pojo.User_login;
 import com.luoxi.hrabe.service.User_loginService;
-import it.unisa.dia.gas.jpbc.Pairing;
-import it.unisa.dia.gas.plaf.jpbc.pairing.PairingFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
-import java.util.List;
+import java.io.File;
+import java.io.IOException;
 import java.util.Map;
 
 @Service
@@ -48,11 +43,49 @@ public class User_loginServiceImpl implements User_loginService {
     }
 
     @Override
-    public void updatePic(String userPic) {
-        Map<String,Object> map = ThreadLocalUtil.get();
+    public void updatePic(MultipartFile file) {
+        //  获取用户 ID
+        Map<String, Object> map = ThreadLocalUtil.get();
         String userId = (String) map.get("userId");
-        user_loginMapper.updatePic(userPic,userId);
+
+        // 检查文件是否为空
+        if (file == null || file.isEmpty()) {
+            throw new RuntimeException("上传失败：文件为空");
+        }
+
+        //  确保文件有扩展名
+        String originalFilename = file.getOriginalFilename();
+        if (originalFilename == null || !originalFilename.contains(".")) {
+            throw new RuntimeException("上传失败：文件名无效");
+        }
+
+        //设置存储路径
+        String uploadDir = System.getProperty("user.dir") + "/static/Picture/";
+        File dir = new File(uploadDir);
+        if (!dir.exists()) {
+            dir.mkdirs(); // 创建目录
+        }
+
+        //  生成新文件名（用户 ID 作为文件名）
+        String fileExtension = originalFilename.substring(originalFilename.lastIndexOf("."));
+        String newFileName = userId + fileExtension;
+        File destFile = new File(uploadDir + newFileName);
+
+        try {
+            // 保存文件
+            file.transferTo(destFile);
+
+            // 生成数据库存储的 URL
+            String picPath = "http://localhost:8080/Picture/" + newFileName;
+
+            // 8更新数据库
+            user_loginMapper.updatePic(picPath, userId);
+        } catch (IOException e) {
+            throw new RuntimeException("头像上传失败：" + e.getMessage(), e);
+        }
     }
+
+
 
     @Override
     public void updatePwd(String newPwd) {

@@ -1,7 +1,6 @@
 package com.luoxi.hrabe.service.impl;
 
 import com.luoxi.hrabe.ABE2OD.LSSS;
-import com.luoxi.hrabe.ABE2OD.Serl_Deserl;
 import com.luoxi.hrabe.ABE2OD.param.*;
 import com.luoxi.hrabe.ABE2OD.utils;
 import com.luoxi.hrabe.HRABE.HRABE;
@@ -9,6 +8,7 @@ import com.luoxi.hrabe.HRABE.param.MPK_h;
 import com.luoxi.hrabe.HRABE.param.ST;
 import com.luoxi.hrabe.HRABE.param.UL;
 import com.luoxi.hrabe.Util.*;
+import com.luoxi.hrabe.controller.FileWebSocketHandler;
 import com.luoxi.hrabe.mapper.MessageMapper;
 import com.luoxi.hrabe.mapper.ST_listMapper;
 import com.luoxi.hrabe.mapper.UL_listMapper;
@@ -22,23 +22,20 @@ import com.luoxi.hrabe.service.Public_paramService;
 import it.unisa.dia.gas.jpbc.Pairing;
 import it.unisa.dia.gas.plaf.jpbc.pairing.PairingFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
-import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
+import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
-import java.util.Base64;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 
 @Service
 public class FileServiceImpl implements FileService {
 
-    String uploadDir="src/main/resources/FileStorage";
+    String uploadDir = "static/FileStorage";
 
     @Autowired
     private MessageMapper messageMapper;
@@ -70,8 +67,8 @@ public class FileServiceImpl implements FileService {
         // 提取文件扩展名
         int dotIndex = originalFileName.lastIndexOf(".");
         if (dotIndex != -1) {
-            fileExtension = originalFileName.substring(dotIndex); // 带 `.`
-            baseName = originalFileName.substring(0, dotIndex); // 不带 `.`
+            fileExtension = originalFileName.substring(dotIndex + 1); // ✅ 去掉 `.`
+            baseName = originalFileName.substring(0, dotIndex);
         }
 
         String filePath = uploadDir + "/" + originalFileName;
@@ -79,7 +76,7 @@ public class FileServiceImpl implements FileService {
 
         // 检查是否存在重名文件，若存在则添加 `(1)`, `(2)` 后缀
         while (Files.exists(Paths.get(filePath))) {
-            filePath = uploadDir + "/" + baseName + "(" + count + ")" + fileExtension;
+            filePath = uploadDir + "/" + baseName + "(" + count + ")." + fileExtension;
             count++;
         }
 
@@ -105,8 +102,8 @@ public class FileServiceImpl implements FileService {
         message.setUserId(userId);
         message.setEncKey(encKey);
         message.setFileName(Paths.get(filePath).getFileName().toString()); // 存储最终文件名
-        message.setFileType(file.getContentType());
-        message.setFileSize(String.valueOf(file.getSize()));
+        message.setFileType(fileExtension); // ✅ 只存储后缀名，如 `jpg`, `doc`
+        message.setFileSize(file.getSize() + " Byte"); // ✅ 添加 `Byte` 单位
         message.setFilePath(filePath);
         message.setTime(LocalDateTime.now());
         message.setPolicy(policy);
@@ -114,167 +111,120 @@ public class FileServiceImpl implements FileService {
         messageMapper.insertMessage(message);
     }
 
-/*    @Override
-    public byte[] dowenFile(String fileName) throws Exception {
-        // 1. 获取文件信息
-        Message message = messageMapper.findByName(fileName);
-        if (message == null) {
-            throw new RuntimeException("文件不存在");
-        }
+    // downloadFile 方法调整 sendStatus 调用
+    @Override
+    public byte[] downloadFile(String userId, String fileName) throws Exception {
+        try {
+            FileWebSocketHandler.sendStatus("start", true, "开始处理文件", fileName);
 
-        String encKey = message.getEncKey();   // 获取文件密钥的密文
-        String filePath = message.getFilePath(); // 获取加密文件路径
+            Message message = messageMapper.findByName(fileName);
+            if (message == null) {
+                FileWebSocketHandler.sendStatus("error", false, "文件不存在", fileName);
+                throw new Exception("文件不存在");
+            }
 
-        Map<String, Object> map = ThreadLocalUtil.get();
-        String userId = (String) map.get("userId");//获取请求方的ID
+            String encKey = message.getEncKey();
+            String filePath = message.getFilePath();
 
-        Pairing pairing = PairingFactory.getPairing("a.properties");
-        Public_param publicParam = public_paramService.findPublicParam();
+            // 获取公钥参数
+            Pairing pairing = PairingFactory.getPairing("a.properties");
+            Public_param publicParam = public_paramService.findPublicParam();
+            MPK_h mpk_h = MPK_hSerializer.String2MPK(publicParam.getMpk(), pairing);
 
-        String Mpk_str=publicParam.getMpk();
-        MPK_h mpk_h=MPK_hSerializer.String2MPK(Mpk_str, pairing);
+            // 获取用户密钥
+            User_enc userEnc = user_encMapper.findById(userId);
+            UL_list ul = ul_listMapper.findByUserId(userId);
 
-        User_enc userEnc=user_encMapper.findById(userId);
-        UL_list ul=ul_listMapper.findByUserId(userId);
-        if(ul==null){
-            System.out.println("用户已经被撤销!!!!");
-        }else{
-            TK tk1= Util.String2TK(ul.getTk1(),pairing);
-            TK tk2= Util.String2TK(ul.getTk2(),pairing);
-            HK hk = Util.String2HK(ul.getHk(),pairing);
-            DK dk = Util.String2DK(userEnc.getDk(),pairing);
+            if (ul == null) {
+                FileWebSocketHandler.sendStatus("userStatus", false, "用户已经被撤销", fileName);
+                throw new Exception("用户已经被撤销");
+            }
 
+            FileWebSocketHandler.sendStatus("userStatus", true, "用户存在于UL列表", fileName);
+            TK tk1 = Util.String2TK(ul.getTk1(), pairing);
+            TK tk2 = Util.String2TK(ul.getTk2(), pairing);
+            HK hk = Util.String2HK(ul.getHk(), pairing);
+            DK dk = Util.String2DK(userEnc.getDk(), pairing);
+
+            // 获取属性签名
             List<UL_list> list = ul_listMapper.findAll();
-            List<UL> ulList=StUtil.convertList(list);
+            List<UL> ulList = StUtil.convertList(list);
+            ST st = new ST(st_listMapper.findNewST().getSign(), ulList, "1");
 
-            String sign = st_listMapper.findNewST().getSign();
+            Ciphertext ciphertext = CiphertextSerializer.String2Ciphertext(encKey);
 
-            ST st=new ST(sign,ulList,"1");
-            st.showST();
+            // 执行 Transform1
+            FileWebSocketHandler.sendStatus("transform1", true, "开始执行 Transform1", fileName);
+            PTC ptc = HRABE.Transform1_h(tk1, tk2, st, userId, ciphertext, mpk_h, pairing);
+            if (ptc == null) {
+                FileWebSocketHandler.sendStatus("transform1", false, "Transform1 失败", fileName);
+                throw new Exception("Transform1 失败");
+            }
+            FileWebSocketHandler.sendStatus("transform1", true, "Transform1 执行成功", fileName);
 
-            Ciphertext ciphertext=CiphertextSerializer.String2Ciphertext(encKey);
-            ciphertext.showCipher();
-            //transform1
-            PTC  ptc = HRABE.Transform1_h(tk1,tk2,st,userId,ciphertext,mpk_h,pairing);
-            assert ptc != null;
-            ptc.showPTC();
-            //transform2
-            TC tc= HRABE.Transform2_h(ptc,hk,pairing);
-            //解密
-            String password =HRABE.Dec_h(dk,tc,mpk_h,pairing);
-            System.out.println(password);
-            // 3. 读取加密文件
+            // 执行 Transform2
+            FileWebSocketHandler.sendStatus("transform2", true, "开始执行 Transform2", fileName);
+            TC tc = HRABE.Transform2_h(ptc, hk, pairing);
+            if (tc == null) {
+                FileWebSocketHandler.sendStatus("transform2", false, "Transform2 失败", fileName);
+                throw new Exception("Transform2 失败");
+            }
+            FileWebSocketHandler.sendStatus("transform2", true, "Transform2 执行成功", fileName);
+
+            // 解密
+            FileWebSocketHandler.sendStatus("decryption", true, "开始解密", fileName);
+            String password = HRABE.Dec_h(dk, tc, mpk_h, pairing);
+            if (password == null) {
+                FileWebSocketHandler.sendStatus("decryption", false, "解密失败", fileName);
+                throw new Exception("解密失败");
+            }
+            FileWebSocketHandler.sendStatus("decryption", true, "解密成功", fileName);
+
+            // 读取并解密文件
             byte[] encryptedFileBytes = Files.readAllBytes(Paths.get(filePath));
+            byte[] decryptedFileBytes = AesUtil.decrypt(encryptedFileBytes, password);
 
-            // 4. 用 AES 解密文件
-            return AesUtil.decrypt(encryptedFileBytes, password);
+            // 发送解密成功状态
+            FileWebSocketHandler.sendStatus("file", true, "解密成功，文件已准备好", fileName);
+
+            // 返回解密后的文件字节数组
+            return decryptedFileBytes;
+
+        } catch (Exception e) {
+            FileWebSocketHandler.sendStatus("error", false, e.getMessage(), fileName);
+            throw e; // 重新抛出异常，让调用方处理
         }
-        return null;
-    }*/
+    }
 
     @Override
-    public void downloadFileWithStatus(String fileName, SseEmitter emitter) throws Exception {
-        // 1. 获取文件信息
-        Message message = messageMapper.findByName(fileName);
-        if (message == null) {
-            emitter.send(SseEmitter.event()
-                    .name("error")
-                    .data("文件不存在"));
-            return;
-        }
+    public List<Message> findMessageById(String userId) {
+        return messageMapper.findById(userId);
+    }
 
-        String encKey = message.getEncKey();
-        String filePath = message.getFilePath();
+    @Override
+    public void deleteMessage(String userId, String fileName) {
+        // 删除数据库中的文件记录
+        messageMapper.deleteByName(userId, fileName);
 
-        Map<String, Object> map = ThreadLocalUtil.get();
-        String userId = (String) map.get("userId");
+        // 构造文件路径
+        String filePath = uploadDir + fileName;
+        File file = new File(filePath);
 
-        Pairing pairing = PairingFactory.getPairing("a.properties");
-        Public_param publicParam = public_paramService.findPublicParam();
-
-        String Mpk_str = publicParam.getMpk();
-        MPK_h mpk_h = MPK_hSerializer.String2MPK(Mpk_str, pairing);
-
-        User_enc userEnc = user_encMapper.findById(userId);
-        UL_list ul = ul_listMapper.findByUserId(userId);
-
-        // 发送用户状态
-        if (ul == null) {
-            emitter.send(SseEmitter.event()
-                    .name("userStatus")
-                    .data("用户已经被撤销"));
-            return;
+        // 检查文件是否存在并尝试删除
+        if (file.exists()) {
+            if (file.delete()) {
+                System.out.println("文件删除成功");
+            } else {
+                System.out.println("文件删除失败");
+            }
         } else {
-            emitter.send(SseEmitter.event()
-                    .name("userStatus")
-                    .data("用户存在于UL列表"));
+            System.out.println("文件不存在");
         }
+    }
 
-        TK tk1 = Util.String2TK(ul.getTk1(), pairing);
-        TK tk2 = Util.String2TK(ul.getTk2(), pairing);
-        HK hk = Util.String2HK(ul.getHk(), pairing);
-        DK dk = Util.String2DK(userEnc.getDk(), pairing);
-
-        List<UL_list> list = ul_listMapper.findAll();
-        List<UL> ulList = StUtil.convertList(list);
-        String sign = st_listMapper.findNewST().getSign();
-        ST st = new ST(sign, ulList, "1");
-
-        Ciphertext ciphertext = CiphertextSerializer.String2Ciphertext(encKey);
-
-        // transform1
-        emitter.send(SseEmitter.event()
-                .name("transform1")
-                .data("开始执行Transform1"));
-        PTC ptc = HRABE.Transform1_h(tk1, tk2, st, userId, ciphertext, mpk_h, pairing);
-        if (ptc == null) {
-            emitter.send(SseEmitter.event()
-                    .name("transform1")
-                    .data("Transform1执行失败"));
-            return;
-        }
-        emitter.send(SseEmitter.event()
-                .name("transform1")
-                .data("Transform1执行成功"));
-
-        // transform2
-        emitter.send(SseEmitter.event()
-                .name("transform2")
-                .data("开始执行Transform2"));
-        TC tc = HRABE.Transform2_h(ptc, hk, pairing);
-        if (tc == null) {
-            emitter.send(SseEmitter.event()
-                    .name("transform2")
-                    .data("Transform2执行失败"));
-            return;
-        }
-        emitter.send(SseEmitter.event()
-                .name("transform2")
-                .data("Transform2执行成功"));
-
-        // 解密
-        emitter.send(SseEmitter.event()
-                .name("decryption")
-                .data("开始执行解密"));
-        String password = HRABE.Dec_h(dk, tc, mpk_h, pairing);
-        if (password == null) {
-            emitter.send(SseEmitter.event()
-                    .name("decryption")
-                    .data("解密失败"));
-            return;
-        }
-        emitter.send(SseEmitter.event()
-                .name("decryption")
-                .data("解密成功"));
-
-        // 读取并解密文件
-        byte[] encryptedFileBytes = Files.readAllBytes(Paths.get(filePath));
-        byte[] decryptedFileBytes = AesUtil.decrypt(encryptedFileBytes, password);
-
-        // 发送文件数据
-        emitter.send(SseEmitter.event()
-                .name("file")
-                .data(Base64.getEncoder().encodeToString(decryptedFileBytes)));
+    @Override
+    public List<Message> getAllMessage() {
+        return messageMapper.findAll();
     }
 
 }
