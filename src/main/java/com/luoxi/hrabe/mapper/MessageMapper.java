@@ -31,4 +31,5 @@ public interface MessageMapper {
     @Select("select * from message")
     List<Message> findAll();
 
+
 }

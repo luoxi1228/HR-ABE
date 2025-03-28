@@ -24,4 +24,8 @@ public interface UL_listMapper {
     @Select("SELECT user_id AS userId, attributes, tk1, tk2, hk FROM ul_list")
     List<UL_list> findAll();
 
+    //清空
+    @Delete("delete from ul_list")
+    void clear();
+
 }

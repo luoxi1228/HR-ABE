@@ -1,10 +1,7 @@
 package com.luoxi.hrabe.mapper;
 
 import com.luoxi.hrabe.pojo.User_login;
-import org.apache.ibatis.annotations.Insert;
-import org.apache.ibatis.annotations.Mapper;
-import org.apache.ibatis.annotations.Select;
-import org.apache.ibatis.annotations.Update;
+import org.apache.ibatis.annotations.*;
 
 @Mapper
 public interface User_loginMapper {
@@ -27,4 +24,8 @@ public interface User_loginMapper {
     //更新密码
     @Update("update user_login set password=#{password} where user_id=#{userId}")
     void updatePwd(String password, String userId);
+
+    //清空
+    @Delete("delete from user_login")
+    void clear();
 }

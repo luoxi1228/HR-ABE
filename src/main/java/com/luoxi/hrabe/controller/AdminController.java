@@ -12,6 +12,7 @@ import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
@@ -88,6 +89,13 @@ public class AdminController {
         st_listService.updateUL();
 
         return Result.success();
+    }
+
+
+    @GetMapping("/ulList")
+    public Result showUL() throws Exception {
+        List<UL_list> List = ul_listService.getAllULList();
+        return Result.success(List);
     }
 
 }

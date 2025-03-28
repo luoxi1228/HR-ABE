@@ -1,6 +1,7 @@
 package com.luoxi.hrabe.mapper;
 
 import com.luoxi.hrabe.pojo.User_enc;
+import org.apache.ibatis.annotations.Delete;
 import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Select;
@@ -15,6 +16,10 @@ public interface User_encMapper {
     //添加用户信息
     @Insert("INSERT INTO user_enc (user_id, tk1, tk2, hk, dk) VALUES (#{userId}, #{tk1}, #{tk2}, #{hk}, #{dk})")
     void insert(User_enc userEnc);
+
+    //清空
+    @Delete("delete from user_enc")
+    void clear();
 
 
 }

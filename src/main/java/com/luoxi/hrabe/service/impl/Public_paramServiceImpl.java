@@ -6,22 +6,36 @@ import com.luoxi.hrabe.HRABE.param.MSK_h;
 import com.luoxi.hrabe.HRABE.param.SetupResult_h;
 import com.luoxi.hrabe.Util.MPK_hSerializer;
 import com.luoxi.hrabe.Util.MSK_hSerializer;
-import com.luoxi.hrabe.mapper.Public_paramMapper;
-import com.luoxi.hrabe.mapper.ST_listMapper;
+import com.luoxi.hrabe.mapper.*;
+import com.luoxi.hrabe.pojo.Message;
 import com.luoxi.hrabe.pojo.Public_param;
+import com.luoxi.hrabe.service.FileService;
 import com.luoxi.hrabe.service.Public_paramService;
 import it.unisa.dia.gas.jpbc.Pairing;
 import it.unisa.dia.gas.plaf.jpbc.pairing.PairingFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.io.File;
+import java.util.List;
+
 @Service
 public class Public_paramServiceImpl implements Public_paramService {
+
+    String uploadDir = "static/FileStorage";
     @Autowired
-    private Public_paramMapper publicParamMapper;
+    private MessageMapper messageMapper;
 
     @Autowired
+    private Public_paramMapper publicParamMapper;
+    @Autowired
     private ST_listMapper stListMapper;
+    @Autowired
+    private UL_listMapper ulListMapper;
+    @Autowired
+    private User_encMapper user_encMapper;
+    @Autowired
+    private User_loginMapper user_loginMapper;
 
     @Override
     public Public_param findPublicParam() {
@@ -56,5 +70,34 @@ public class Public_paramServiceImpl implements Public_paramService {
         } else {
             stListMapper.addST("sign");
         }
+
+        //清空消息类别并删除文件
+        List<Message> messageList= messageMapper.findAll();
+        for(Message message:messageList){
+            String fileName = message.getFileName();
+            String userId = message.getUserId();
+            // 删除数据库中的文件记录
+            messageMapper.deleteByName(userId, fileName);
+            // 构造文件路径
+            String filePath = uploadDir + fileName;
+            File file = new File(filePath);
+
+            // 检查文件是否存在并尝试删除
+            if (file.exists()) {
+                if (file.delete()) {
+                    System.out.println("文件删除成功");
+                } else {
+                    System.out.println("文件删除失败");
+                }
+            } else {
+                System.out.println("文件不存在");
+            }
+        }
+
+        //删除用户列表、登录列表、用户加密列表、
+        user_loginMapper.clear();
+        user_encMapper.clear();
+        ulListMapper.clear();
+
     }
 }
