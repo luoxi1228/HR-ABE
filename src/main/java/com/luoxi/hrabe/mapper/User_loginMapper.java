@@ -28,4 +28,7 @@ public interface User_loginMapper {
     //清空
     @Delete("delete from user_login")
     void clear();
+    //根据id删除
+    @Delete("delete from user_login where user_id=#{userId}")
+    void deleteById(String userId);
 }

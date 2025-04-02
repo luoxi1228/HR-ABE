@@ -28,4 +28,8 @@ public interface UL_listMapper {
     @Delete("delete from ul_list")
     void clear();
 
+    //更新用户列表
+    @Update("update ul_list set attributes=#{attributes},tk1=#{tk1},tk2=#{tk2},hk=#{hk} where user_id=#{userId} ")
+    void updateUL(UL_list ul);
+
 }

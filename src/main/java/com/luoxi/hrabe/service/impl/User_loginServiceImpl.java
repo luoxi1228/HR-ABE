@@ -38,7 +38,7 @@ public class User_loginServiceImpl implements User_loginService {
     }
 
     @Override
-    public void update(User_login user) {
+    public void updateInfo(User_login user) {
         user_loginMapper.update(user);
     }
 
@@ -92,6 +92,11 @@ public class User_loginServiceImpl implements User_loginService {
         Map<String,Object> map = ThreadLocalUtil.get();
         String userId = (String) map.get("userId");
         user_loginMapper.updatePwd(Md5Util.getMD5String(newPwd),userId);
+    }
+
+    @Override
+    public void deleteUser_login(String userId) {
+        user_loginMapper.deleteById(userId);
     }
 
 

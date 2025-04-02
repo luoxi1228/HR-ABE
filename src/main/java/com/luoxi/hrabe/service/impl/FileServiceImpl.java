@@ -28,14 +28,17 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.security.SecureRandom;
 import java.time.LocalDateTime;
+import java.util.Base64;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.*;
 
 @Service
 public class FileServiceImpl implements FileService {
 
-    String uploadDir = "static/FileStorage";
+    String uploadDir = "static/FileStorage/";
 
     @Autowired
     private MessageMapper messageMapper;
@@ -51,7 +54,13 @@ public class FileServiceImpl implements FileService {
     private ST_listMapper st_listMapper;
 
     @Override
-    public void uploadFile(MultipartFile file, String password, String policy) throws Exception {
+    public void uploadFile(MultipartFile file, String policy) throws Exception {
+
+        // 1. 生成随机密码（32字节，256位，适合AES-256）
+        SecureRandom secureRandom = new SecureRandom();
+        byte[] passwordBytes = new byte[32];
+        secureRandom.nextBytes(passwordBytes);
+        String password = Base64.getEncoder().encodeToString(passwordBytes);
 
         // 1. 读取原始文件内容
         byte[] fileBytes = file.getBytes();
@@ -71,12 +80,12 @@ public class FileServiceImpl implements FileService {
             baseName = originalFileName.substring(0, dotIndex);
         }
 
-        String filePath = uploadDir + "/" + originalFileName;
+        String filePath = uploadDir + originalFileName;
         int count = 1;
 
         // 检查是否存在重名文件，若存在则添加 `(1)`, `(2)` 后缀
         while (Files.exists(Paths.get(filePath))) {
-            filePath = uploadDir + "/" + baseName + "(" + count + ")." + fileExtension;
+            filePath = uploadDir  + baseName + "(" + count + ")." + fileExtension;
             count++;
         }
 
@@ -114,6 +123,9 @@ public class FileServiceImpl implements FileService {
     // downloadFile 方法调整 sendStatus 调用
     @Override
     public byte[] downloadFile(String userId, String fileName) throws Exception {
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+        Future<TC> future = null;
+
         try {
             FileWebSocketHandler.sendStatus("start", true, "开始处理文件", fileName);
 
@@ -162,14 +174,30 @@ public class FileServiceImpl implements FileService {
             }
             FileWebSocketHandler.sendStatus("transform1", true, "Transform1 执行成功", fileName);
 
-            // 执行 Transform2
+            // 执行 Transform2（带超时控制）
             FileWebSocketHandler.sendStatus("transform2", true, "开始执行 Transform2", fileName);
-            TC tc = HRABE.Transform2_h(ptc, hk, pairing);
-            if (tc == null) {
-                FileWebSocketHandler.sendStatus("transform2", false, "Transform2 失败", fileName);
-                throw new Exception("Transform2 失败");
+
+            // 提交Transform2任务到线程池
+            future = executor.submit(() -> HRABE.Transform2_h(ptc, hk, pairing));
+
+            TC tc;
+            try {
+                // 设置10秒超时
+                tc = future.get(10, TimeUnit.SECONDS);
+                if (tc == null) {
+                    FileWebSocketHandler.sendStatus("transform2", false, "Transform2 失败", fileName);
+                    throw new Exception("Transform2 失败");
+                }
+                FileWebSocketHandler.sendStatus("transform2", true, "Transform2 执行成功", fileName);
+            } catch (TimeoutException e) {
+                FileWebSocketHandler.sendStatus("transform2", false, "Transform2 执行超时", fileName);
+                throw new Exception("Transform2 操作超时，请重试");
+            } finally {
+                // 取消任务（如果还在运行）
+                if (future != null && !future.isDone()) {
+                    future.cancel(true);
+                }
             }
-            FileWebSocketHandler.sendStatus("transform2", true, "Transform2 执行成功", fileName);
 
             // 解密
             FileWebSocketHandler.sendStatus("decryption", true, "开始解密", fileName);
@@ -187,12 +215,13 @@ public class FileServiceImpl implements FileService {
             // 发送解密成功状态
             FileWebSocketHandler.sendStatus("file", true, "解密成功，文件已准备好", fileName);
 
-            // 返回解密后的文件字节数组
             return decryptedFileBytes;
 
         } catch (Exception e) {
             FileWebSocketHandler.sendStatus("error", false, e.getMessage(), fileName);
-            throw e; // 重新抛出异常，让调用方处理
+            throw e;
+        } finally {
+            executor.shutdownNow(); // 确保线程池被关闭
         }
     }
 

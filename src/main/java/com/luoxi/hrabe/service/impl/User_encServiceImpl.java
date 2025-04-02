@@ -59,4 +59,35 @@ public class User_encServiceImpl implements User_encService {
 
     }
 
+    @Override
+    public void deleteUser_enc(String userId) {
+        user_encMapper.deleteById(userId);
+    }
+
+    @Override
+    public void updateUser_enc(String userId,String attributes) throws Exception {
+        Pairing pairing = PairingFactory.getPairing("a.properties");
+
+        SetupResult_h setupResult=HRABE.Setup_h(pairing);
+        //setupResult.show();
+
+        Public_param publicParam = public_paramService.findPublicParam();
+
+        MPK_h mpk_h= MPK_hSerializer.String2MPK(publicParam.getMpk(),pairing);
+        MSK_h msk_h= MSK_hSerializer.String2MSK(publicParam.getMsk(),pairing);
+
+        List<UL> ulList=setupResult.getUl_h();//用户列表
+
+        JoinResult JR=HRABE.Join(mpk_h,msk_h,ulList,userId,attributes,pairing);
+        String tk1= Util.TK2String(JR.getTk1());
+        String tk2= Util.TK2String(JR.getTk2());
+        String hk= Util.HK2String(JR.getHk());
+        String dk= Util.DK2String(JR.getDk());
+
+        User_enc user_enc=new User_enc(userId,tk1,tk2,hk,dk);
+
+        user_encMapper.update(user_enc);
+
+    }
+
 }

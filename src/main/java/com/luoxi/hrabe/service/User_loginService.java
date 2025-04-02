@@ -10,9 +10,11 @@ public interface User_loginService {
     //注册
     void register(String userId,String userName, String password,String attributes,String userPic) throws Exception;
 
-    void update(User_login user);
+    void updateInfo(User_login user);
 
     void updatePic(MultipartFile file);
 
     void updatePwd(String newPwd);
+
+    void deleteUser_login(String userId);
 }

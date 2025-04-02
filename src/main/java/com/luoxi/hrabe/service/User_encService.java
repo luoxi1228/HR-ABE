@@ -9,4 +9,10 @@ public interface User_encService {
 
     //添加信息
     void addUser_enc(String userId,String attributes) throws Exception;
+
+    //根据id删除用户
+    void deleteUser_enc(String userId);
+
+    //更新用户
+    void updateUser_enc(String userId,String attributes) throws Exception;
 }

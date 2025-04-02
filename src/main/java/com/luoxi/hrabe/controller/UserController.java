@@ -122,12 +122,24 @@ public class UserController {
         return Result.success(user);
     }
 
-    @PutMapping("/update")
-    public Result update(@RequestBody  User_login user) {
+    @PutMapping("/updateInfo")
+    public Result updateInfo(@RequestBody  User_login user) throws Exception {
         Map<String, Object> map = ThreadLocalUtil.get();
         String userId = (String) map.get("userId");
         user.setUserId(userId);//获取当前登录的用户id
-        user_loginService.update(user);
+        user_loginService.updateInfo(user);
+        //更新用户密钥列表
+        user_encService.updateUser_enc(userId,user.getAttributes());
+        //更新用户列表
+        User_enc u1=user_encService.findById(userId);
+        UL_list u2=ul_listService.findByUserId(userId);
+        UL_list ul=new UL_list(userId,user.getAttributes(),u1.getTk1(), u1.getTk2(), u1.getHk());
+        if(u2!=null){
+            ul_listService.updateUL(ul);
+        }
+        //更新状态
+        st_listService.updateUL();
+
         return Result.success();
     }
 
@@ -177,8 +189,8 @@ public class UserController {
     }
 
     @PostMapping("/uploadFile")
-    public Result uploadFile(@RequestParam("file") MultipartFile file, @RequestParam("password") String password,@RequestParam("policy") String policy) throws Exception {
-        fileService.uploadFile(file, password,policy);
+    public Result uploadFile(@RequestParam("file") MultipartFile file, @RequestParam("policy") String policy) throws Exception {
+        fileService.uploadFile(file,policy);
         System.out.println("文件上传成功");
         return Result.success();
     }
@@ -232,6 +244,28 @@ public class UserController {
         return Result.success(messageList);
     }
 
+    //查询用户是否在用户列表
+    @GetMapping("/ulUser")
+    public Result ulUser(){
+        Map<String, Object> map = ThreadLocalUtil.get();
+        String userId = (String) map.get("userId");
+        UL_list u1=ul_listService.findByUserId(userId);
+        if (u1==null){
+            return Result.error("用户已被撤销，请重新注册！");
+        }else {
+            return Result.success("用户存在");
+        }
+    }
+
+    //用户注销
+    @PostMapping("/logout")
+    public Result deleteUser(){
+        Map<String, Object> map = ThreadLocalUtil.get();
+        String userId = (String) map.get("userId");
+        user_encService.deleteUser_enc(userId);
+        user_loginService.deleteUser_login(userId);
+        return Result.success();
+    }
 
 
 }

@@ -34,4 +34,9 @@ public class UL_listServiceImpl implements UL_listService {
         return ul_listMapper.findAll();
     }
 
+    @Override
+    public void updateUL(UL_list ul) {
+        ul_listMapper.updateUL(ul);
+    }
+
 }

@@ -22,7 +22,7 @@ import java.util.List;
 @Service
 public class Public_paramServiceImpl implements Public_paramService {
 
-    String uploadDir = "static/FileStorage";
+    String uploadDir = "static/FileStorage/";
     @Autowired
     private MessageMapper messageMapper;
 
